@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { @apply scroll-smooth; }
+  body {
+    background-color: #060b14;
+    color: #cfe6f2;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #060b14; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.14); border-radius: 3px; }
+}
+
+@layer components {
+  /* ─── Background grid ──────────────────────────────────────── */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black, transparent);
+  }
+
+  /* ─── Card ──────────────────────────────────────────────────── */
+  .card {
+    background: #0c1420;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    transition: border-color 0.15s ease;
+  }
+  .card-hover:hover { border-color: rgba(0,212,255,0.18); }
+  .card-cyan   { border-color: rgba(0,212,255,0.22); }
+  .card-green  { border-color: rgba(34,211,165,0.22); }
+  .card-violet { border-color: rgba(124,58,237,0.22); }
+
+  /* ─── Mono labels / tags ────────────────────────────────────── */
+  .label-mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .tag {
+    @apply label-mono inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border;
+  }
+  .tag-cyan   { @apply tag text-sky-300 border-sky-400/25 bg-sky-400/10; }
+  .tag-green  { @apply tag text-emerald-300 border-emerald-400/25 bg-emerald-400/10; }
+  .tag-violet { @apply tag text-violet-300 border-violet-400/25 bg-violet-400/10; }
+  .tag-muted  { @apply tag text-slate-400 border-white/10 bg-white/[0.03]; }
+
+  .stat-num {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #00d4ff, #22d3a5);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .btn-tab {
+    @apply label-mono px-3.5 py-2 rounded-lg transition-colors border;
+  }
+  .btn-tab-active   { @apply text-sky-300 bg-sky-400/10 border-sky-400/25; }
+  .btn-tab-inactive { @apply text-slate-500 border-transparent hover:text-slate-300 hover:bg-white/[0.03]; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fade-in 0.25s ease-out; }
+

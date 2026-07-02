@@ -1,0 +1,27 @@
+[package]
+name = "mlb-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "CLI for MLB sports betting analysis"
+
+[[bin]]
+name = "mlb"
+path = "src/main.rs"
+
+[dependencies]
+mlb-core = { workspace = true }
+mlb-odds-client = { workspace = true }
+mlb-db = { workspace = true }
+mlb-stats-client = { workspace = true }
+mlb-predict = { workspace = true }
+tokio = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+rust_decimal = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+dotenvy = { workspace = true }

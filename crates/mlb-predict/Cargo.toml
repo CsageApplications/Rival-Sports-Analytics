@@ -1,0 +1,15 @@
+[package]
+name = "mlb-predict"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Historical trend regression and matchup analysis for MLB players, built on mlb-stats-client"
+
+[dependencies]
+mlb-stats-client = { workspace = true }
+mlb-db = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
