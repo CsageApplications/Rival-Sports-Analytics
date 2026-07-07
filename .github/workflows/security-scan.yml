@@ -1,0 +1,107 @@
+name: Security Scan
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  secrets-scan:
+    name: Detect exposed secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so gitleaks can scan all commits in a push
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  env-file-check:
+    name: Ensure .env files are not tracked
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for committed .env files
+        run: |
+          FOUND=$(git ls-files | grep -E '(^|/)\.env$|(^|/)\.env\.[^.]+$' | grep -v '\.env\.example$' || true)
+          if [ -n "$FOUND" ]; then
+            echo "❌ Committed .env file(s) detected:"
+            echo "$FOUND"
+            exit 1
+          fi
+          echo "✅ No .env files are tracked."
+
+      - name: Check for API key / credential patterns in tracked files
+        run: |
+          PATTERNS=(
+            'ODDS_API_KEY\s*=\s*(?!your_api_key_here)[A-Za-z0-9_-]{10,}'
+            'ANTHROPIC_API_KEY\s*=\s*(?!your_anthropic_api_key_here)[A-Za-z0-9_-]{10,}'
+            'sk-ant-api[0-9A-Za-z_-]{20,}'
+            'sk-[A-Za-z0-9_-]{20,}'
+            'AKIA[0-9A-Z]{16}'
+            '-----BEGIN (RSA|EC|OPENSSH|PGP) PRIVATE KEY-----'
+          )
+
+          FAILED=0
+          for pattern in "${PATTERNS[@]}"; do
+            MATCHES=$(git grep -rEn "$pattern" -- ':!*.example' ':!*.md' ':!.github' ':!Cargo.lock' 2>/dev/null || true)
+            if [ -n "$MATCHES" ]; then
+              echo "❌ Potential secret found matching pattern: $pattern"
+              echo "$MATCHES"
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" -eq 1 ]; then
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets detected in tracked files."
+
+  gitignore-check:
+    name: Validate .gitignore covers sensitive paths
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required gitignore entries
+        run: |
+          REQUIRED=(
+            "\.env"
+            "node_modules"
+            "target/"
+            "\*\.db"
+          )
+
+          FAILED=0
+          for entry in "${REQUIRED[@]}"; do
+            if ! grep -qE "$entry" .gitignore; then
+              echo "❌ Missing .gitignore entry: $entry"
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" -eq 1 ]; then
+            exit 1
+          fi
+          echo "✅ All required .gitignore entries present."
+
+      - name: Ensure no SQLite database files are tracked
+        run: |
+          FOUND=$(git ls-files | grep -E '\.db(-shm|-wal)?$' || true)
+          if [ -n "$FOUND" ]; then
+            echo "❌ Tracked database file(s) detected (should be gitignored):"
+            echo "$FOUND"
+            exit 1
+          fi
+          echo "✅ No database files are tracked."
