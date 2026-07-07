@@ -6,8 +6,10 @@ rust-version.workspace = true
 description = "Historical trend regression and matchup analysis for MLB players, built on mlb-stats-client"
 
 [dependencies]
+mlb-core = { workspace = true }
 mlb-stats-client = { workspace = true }
 mlb-db = { workspace = true }
+rust_decimal = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
