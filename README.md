@@ -1,4 +1,4 @@
-# Rust-MLB-Sports-Betting
+# Rival Sports Analytics
 
 A command-line tool for MLB sports betting analysis, built in Rust. Integrates with [The Odds API](https://the-odds-api.com/) to fetch real-time odds, analyze expected value, detect arbitrage opportunities, and track your bankroll.
 
@@ -21,8 +21,8 @@ A command-line tool for MLB sports betting analysis, built in Rust. Integrates w
 ### Build from source
 
 ```bash
-git clone https://github.com/CsageApplications/Rust-MLB-Sports-Betting.git
-cd Rust-MLB-Sports-Betting
+git clone https://github.com/CsageApplications/Rival-Sports-Analytics.git
+cd Rival-Sports-Analytics
 cargo build --release
 ```
 
@@ -139,7 +139,7 @@ mlb bankroll history
 ## Project Structure
 
 ```
-Rust-MLB-Sports-Betting/
+Rival-Sports-Analytics/
 ├── Cargo.toml                    # Workspace configuration
 ├── crates/
 │   ├── mlb-core/                 # Domain models & business logic
