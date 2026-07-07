@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rival Sports Analytics — Statistical MLB Betting Models in Rust</title>
+<meta name="description" content="Rival Sports Analytics is a Rust + React MLB analytics platform built on published statistical models: OLS trend regression, Poisson prop projections, Pythagorean win expectation, and Log5 — not a black box." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚾</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #060b14;
+    --bg2: #080e18;
+    --bg3: #0c1420;
+    --bg4: #101a28;
+    --border: rgba(255,255,255,0.07);
+    --border-cyan: rgba(0,212,255,0.16);
+    --cyan: #00d4ff;
+    --cyan-dim: rgba(0,212,255,0.10);
+    --violet: #7c3aed;
+    --violet-dim: rgba(124,58,237,0.10);
+    --text: #cfe6f2;
+    --text-dim: #7aa3ba;
+    --text-muted: #3a5566;
+    --green: #22d3a5;
+    --amber: #f59e0b;
+    --red: #ef4444;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.16); border-radius: 4px; }
+
+  .mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  .label-mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Background grid ─────────────────────────────────────── */
+  .bg-grid {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.035) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, black, transparent);
+            mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, black, transparent);
+  }
+
+  /* ── Nav ──────────────────────────────────────────────────── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    backdrop-filter: blur(10px);
+    background: rgba(6,11,20,0.72);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 1.05rem;
+    text-decoration: none;
+  }
+  .brand-dot {
+    width: 9px; height: 9px; border-radius: 999px;
+    background: var(--cyan);
+    box-shadow: 0 0 12px 2px rgba(0,212,255,0.6);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  .brand .accent { background: linear-gradient(135deg, #00d4ff, #22d3a5); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-links a {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-cyan);
+    background: var(--cyan-dim);
+    color: #7fe3ff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .nav-cta:hover { background: rgba(0,212,255,0.18); }
+
+  @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fade-in 0.5s ease-out both; }
+  .fade-in-1 { animation-delay: .05s; } .fade-in-2 { animation-delay: .1s; }
+  .fade-in-3 { animation-delay: .15s; } .fade-in-4 { animation-delay: .2s; }
+
+  /* ── Hero ─────────────────────────────────────────────────── */
+  header.hero {
+    padding: 96px 0 72px;
+    text-align: center;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border-cyan);
+    background: var(--cyan-dim);
+    color: #7fe3ff;
+    margin-bottom: 28px;
+  }
+  h1.title {
+    font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0 0 20px;
+    line-height: 1.05;
+  }
+  h1.title .accent { background: linear-gradient(135deg, #00d4ff, #22d3a5); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle {
+    max-width: 700px;
+    margin: 0 auto 40px;
+    color: var(--text-dim);
+    font-size: 1.08rem;
+  }
+  .hero-ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 56px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .btn-primary { background: linear-gradient(135deg, #00d4ff, #22d3a5); color: #04121a; }
+  .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn-ghost { border: 1px solid var(--border); color: var(--text); background: var(--bg3); }
+  .btn-ghost:hover { border-color: var(--border-cyan); background: var(--bg4); }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  .stat-cell { background: var(--bg3); padding: 22px 16px; text-align: center; }
+  .stat-num { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 700; color: #7fe3ff; }
+  .stat-label { margin-top: 6px; color: var(--text-muted); }
+
+  /* ── Sections ─────────────────────────────────────────────── */
+  section { padding: 80px 0; }
+  .section-head { text-align: center; margin-bottom: 48px; }
+  .section-head .tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--cyan); margin-bottom: 14px;
+  }
+  .section-head .tag::before { content: ''; width: 7px; height: 7px; border-radius: 999px; background: var(--cyan); }
+  h2.section-title { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; margin: 0 0 12px; letter-spacing: -0.02em; }
+  .section-desc { color: var(--text-dim); max-width: 640px; margin: 0 auto; }
+
+  /* ── Feature grid ─────────────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 26px;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .card:hover { border-color: var(--border-cyan); transform: translateY(-2px); }
+  .card .icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 16px;
+  }
+  .icon-cyan { background: var(--cyan-dim); border: 1px solid var(--border-cyan); }
+  .icon-violet { background: var(--violet-dim); border: 1px solid rgba(124,58,237,0.25); }
+  .icon-green { background: rgba(34,211,165,0.10); border: 1px solid rgba(34,211,165,0.25); }
+  .card h3 { font-size: 1.02rem; margin: 0 0 8px; }
+  .card p { color: var(--text-dim); font-size: 0.9rem; margin: 0; }
+
+  /* ── Mock dashboard preview ───────────────────────────────── */
+  .preview-shell {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6);
+  }
+  .preview-topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  .preview-dot { width: 10px; height: 10px; border-radius: 999px; }
+  .preview-tabs {
+    display: flex; gap: 6px; padding: 14px 16px 0;
+  }
+  .ptab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 8px 14px; border-radius: 8px 8px 0 0;
+    color: var(--text-muted);
+  }
+  .ptab.active { color: #7fe3ff; background: var(--bg4); border: 1px solid var(--border); border-bottom: none; }
+  .preview-body { padding: 20px; }
+  table.mock { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  table.mock th {
+    text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted);
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+  }
+  table.mock td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-dim); }
+  table.mock tr:last-child td { border-bottom: none; }
+  .pill { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-dim); }
+  .pill-violet { color: #c4a4ff; border-color: rgba(124,58,237,0.3); background: var(--violet-dim); }
+  .pill-cyan { color: #7fe3ff; border-color: var(--border-cyan); background: var(--cyan-dim); }
+  .green { color: #34e5b8; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .red { color: #ff7a7a; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .white { color: var(--text); font-weight: 600; }
+
+  /* ── Architecture ─────────────────────────────────────────── */
+  .arch-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; align-items: start; }
+  .crate-list { display: flex; flex-direction: column; gap: 10px; }
+  .crate {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px;
+  }
+  .crate .name { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #7fe3ff; min-width: 150px; font-size: 0.85rem; }
+  .crate .desc { color: var(--text-dim); font-size: 0.83rem; }
+
+  .stack-badges { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+    padding: 7px 13px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text-dim);
+    background: var(--bg3);
+  }
+
+  /* ── Flow diagram ─────────────────────────────────────────── */
+  .flow {
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .flow-node {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 18px;
+    font-size: 0.82rem; text-align: center; min-width: 140px;
+  }
+  .flow-node .t { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .flow-arrow { color: var(--text-muted); font-size: 1.1rem; }
+
+  /* ── CTA footer ───────────────────────────────────────────── */
+  .cta-box {
+    background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.08));
+    border: 1px solid var(--border-cyan);
+    border-radius: 20px;
+    padding: 56px 32px;
+    text-align: center;
+  }
+  .cta-box h2 { margin: 0 0 12px; }
+  .cta-box p { color: var(--text-dim); margin: 0 0 28px; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+  .footer-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .disclaimer {
+    max-width: 900px; margin: 40px auto 0; padding: 16px 20px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--bg3); color: var(--text-muted); font-size: 0.8rem; text-align: center;
+  }
+
+  /* ── Methodology / math section ──────────────────────── */
+  .model-list { display: flex; flex-direction: column; gap: 18px; }
+  .model-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 30px;
+  }
+  .model-card:hover { border-color: var(--border-cyan); }
+  .model-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .model-head h3 { margin: 0; font-size: 1.15rem; }
+  .model-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .model-desc { color: var(--text-dim); font-size: 0.92rem; margin: 0 0 16px; max-width: 760px; }
+  .formula-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 14px 0;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.95rem;
+    color: #a8e6ff;
+  }
+  .formula-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+  }
+  .model-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .worked-example {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; margin-top: 16px; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem; color: var(--text-dim); white-space: pre-wrap; line-height: 1.7;
+  }
+  .worked-example .imp { color: #34e5b8; }
+  .worked-example .reg { color: #ff9d7a; }
+
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: 1fr; }
+    .arch-grid { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <nav>
+    <div class="wrap inner">
+      <a class="brand" href="#top">
+        <span class="brand-dot"></span>
+        Rival <span class="accent">Sports Analytics</span>
+      </a>
+      <div class="nav-links">
+        <a href="#methodology">Methodology</a>
+        <a href="#features">Features</a>
+        <a href="#preview">Dashboard</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#stack">Tech Stack</a>
+      </div>
+      <a class="nav-cta" href="https://github.com/CsageApplications/Rival-Sports-Analytics" target="_blank" rel="noopener">
+        ★ View on GitHub
+      </a>
+    </div>
+  </nav>
+
+  <header id="top" class="hero">
+    <div class="wrap">
+      <div class="eyebrow label-mono fade-in">
+        <span>⚾</span> STATISTICAL MODELS · NOT A BLACK BOX
+      </div>
+      <h1 class="title fade-in fade-in-1">Rival <span class="accent">Sports Analytics</span></h1>
+      <p class="subtitle fade-in fade-in-2">
+        An MLB analytics platform built from published statistical methods, not opaque machine learning:
+        OLS trend regression, a Poisson count model for player props, Pythagorean win expectation, and the
+        Log5 method — implemented natively in Rust, validated against live FanDuel &amp; DraftKings data,
+        with every formula documented and open to inspection.
+      </p>
+      <div class="hero-ctas fade-in fade-in-3">
+        <a class="btn btn-primary" href="#methodology">See the Math →</a>
+        <a class="btn btn-ghost" href="https://github.com/CsageApplications/Rival-Sports-Analytics" target="_blank" rel="noopener">View Source</a>
+      </div>
+      <div class="stat-row fade-in fade-in-4">
+        <div class="stat-cell"><div class="stat-num">4</div><div class="label-mono stat-label">Statistical Models</div></div>
+        <div class="stat-cell"><div class="stat-num">1.83</div><div class="label-mono stat-label">Pythagenpat Exp.</div></div>
+        <div class="stat-cell"><div class="stat-num">8</div><div class="label-mono stat-label">Rust Crates</div></div>
+        <div class="stat-cell"><div class="stat-num">100%</div><div class="label-mono stat-label">Real Odds Data</div></div>
+      </div>
+    </div>
+  </header>
+
+  <section id="methodology">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="label-mono tag">THE SCIENCE</div>
+        <h2 class="section-title">Four classifiers, published formulas, zero mystery</h2>
+        <p class="section-desc">
+          Every projection this platform surfaces traces back to a named statistical method with a closed-form
+          equation — no gradient-boosted black box, no "trust the neural net." Each is implemented natively in
+          Rust and covered by unit tests.
+        </p>
+      </div>
+
+      <div class="model-list">
+
+        <!-- 1. De-vig / no-vig consensus -->
+        <div class="model-card">
+          <div class="model-head">
+            <h3>1. No-Vig Consensus Probability</h3>
+            <span class="model-num">mlb-core::analysis</span>
+          </div>
+          <p class="model-desc">
+            Sportsbook odds embed a built-in margin ("vig") that inflates implied probabilities above 100%. We strip
+            it independently from FanDuel and DraftKings, then average the two books' fair probabilities into a
+            single consensus estimate of the true win probability for a given side.
+          </p>
+          <div class="formula-label">Implied probability from American odds</div>
+          <div class="formula-box">p(price) = price ≥ 0 ? 100 / (price + 100) : |price| / (|price| + 100)</div>
+          <div class="formula-label">De-vig (normalize a two-way market to sum to 1)</div>
+          <div class="formula-box">fair(A) = p(A) / (p(A) + p(B))</div>
+          <p class="model-desc" style="margin-top:14px;">
+            A book's line is flagged <strong style="color:#7fe3ff">+EV</strong> whenever its own posted price implies
+            a probability below the cross-book consensus fair probability — the gap between the two is the edge.
+          </p>
+        </div>
+
+        <!-- 2. OLS trend regression -->
+        <div class="model-card">
+          <div class="model-head">
+            <h3>2. OLS Trend Regression &amp; Polarity Classifier</h3>
+            <span class="model-num">mlb-predict::trend</span>
+          </div>
+          <p class="model-desc">
+            For a player's season-by-season rate statistic (K/9, HR/G, ERA, ...), we fit an ordinary least squares
+            regression line across seasons and classify the slope into a three-state label. Crucially, "increasing"
+            and "improving" are <em>not</em> the same thing — a rising ERA is bad, a rising K/9 is good — so the
+            direction classifier is composed with a per-statistic polarity flag before it's ever shown to a user.
+          </p>
+          <div class="formula-label">Ordinary least squares slope</div>
+          <div class="formula-box">β₁ = Σ(xᵢ − x̄)(yᵢ − ȳ) / Σ(xᵢ − x̄)²</div>
+          <div class="formula-label">Direction classifier (scaled to the stat's own magnitude)</div>
+          <div class="formula-box">direction =
+  Increasing  if β₁ >  0.03 · max(|ȳ|, 0.5)
+  Decreasing  if β₁ < −0.03 · max(|ȳ|, 0.5)
+  Stable      otherwise</div>
+          <div class="worked-example">K/9   2025: 13.92 → 2026: 11.00  <span class="reg">REGRESSING</span>  (−2.92/season)
+ERA   2025: 4.57  → 2026: 2.36   <span class="imp">IMPROVING</span>   (−2.21/season)
+BB/9  2025: 3.32  → 2026: 2.85   <span class="imp">IMPROVING</span>   (−0.48/season)</div>
+          <div class="model-meta">
+            <span class="badge">5 unit tests</span>
+            <span class="badge">Handles IP "6.1" thirds-of-an-inning parsing</span>
+            <span class="badge">Min. 2 seasons required</span>
+          </div>
+        </div>
+
+        <!-- 3. Poisson prop projection -->
+        <div class="model-card">
+          <div class="model-head">
+            <h3>3. Poisson Count Model for Player Props</h3>
+            <span class="model-num">mlb-predict::projection</span>
+          </div>
+          <p class="model-desc">
+            Low-count discrete stats (strikeouts, hits, home runs) are well modeled by a Poisson distribution. We
+            project a player's expected count (λ) as the mean of their last 10 cached games, then compute the exact
+            model-implied probability the posted Over/Under line hits — giving every prop an edge estimate even when
+            only one book quotes it.
+          </p>
+          <div class="formula-label">Recent-form projection</div>
+          <div class="formula-box">λ = (1/n) · Σ statᵢ,  over last n ≤ 10 games</div>
+          <div class="formula-label">P(Over) under Poisson(λ) for half-integer line k+0.5</div>
+          <div class="formula-box">P(X > k) = 1 − e⁻λ · Σ (λⁱ / i!),  for i = 0 … k</div>
+          <p class="model-desc" style="margin-top:14px;">
+            A safeguard flags <strong style="color:#ffb56b">high-divergence</strong> picks where model and market
+            disagree by more than 30 percentage points or 50% EV — these are surfaced with an explicit
+            "verify lineup" caution rather than presented as confident edges, since large gaps usually signal a
+            role change or lineup uncertainty rather than true mispricing.
+          </p>
+        </div>
+
+        <!-- 4. Pythagorean + Log5 -->
+        <div class="model-card">
+          <div class="model-head">
+            <h3>4. Pythagorean Win Expectation + Log5</h3>
+            <span class="model-num">mlb-predict::game_model</span>
+          </div>
+          <p class="model-desc">
+            Pre-game win probability is estimated with two well-established sabermetric formulas — not a black-box
+            ML model. "Pythagenpat" estimates each team's true winning percentage from season runs scored/allowed
+            (more stable than raw win-loss record), and Bill James' Log5 method combines both teams' win percentages
+            into a single head-to-head probability, plus a small home-field nudge.
+          </p>
+          <div class="formula-label">Pythagenpat win expectation (exponent 1.83)</div>
+          <div class="formula-box">win% = RSᵉ / (RSᵉ + RAᵉ),   e = 1.83</div>
+          <div class="formula-label">Log5 (Bill James)</div>
+          <div class="formula-box">P(A beats B) = (pₐ − pₐpᵦ) / (pₐ + pᵦ − 2pₐpᵦ)</div>
+          <p class="model-desc" style="margin-top:14px;">
+            The resulting probability is compared directly against the market's de-vigged moneyline price to surface
+            a model-vs-market edge, in percentage points.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="label-mono tag">FROM MODEL TO DASHBOARD</div>
+        <h2 class="section-title">Where each classifier shows up</h2>
+        <p class="section-desc">The four models above aren't academic exercises — each one powers a specific, live dashboard surface backed by real FanDuel and DraftKings lines.</p>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="icon icon-cyan">📈</div>
+          <h3>Best Expected Value</h3>
+          <p>De-vigs FanDuel and DraftKings independently, averages their fair probabilities, and ranks every line by true +EV — plus a second edge source driven by player-prop model projections.</p>
+        </div>
+        <div class="card">
+          <div class="icon icon-green">⚖️</div>
+          <h3>Arbitrage Detection</h3>
+          <p>Continuously scans both books for guaranteed-profit mismatches across moneylines, spreads, and totals.</p>
+        </div>
+        <div class="card">
+          <div class="icon icon-violet">🎯</div>
+          <h3>Player Prop Projections</h3>
+          <p>A recent-form Poisson count model projects each player's expected stat line from their last 10 cached games, surfacing edges even when only one book quotes a prop.</p>
+        </div>
+        <div class="card">
+          <div class="icon icon-cyan">🧮</div>
+          <h3>Win Probability Model</h3>
+          <p>Pythagorean win expectation combined via the Log5 method (plus home-field adjustment) estimates true moneyline win probability vs. the market's de-vigged price.</p>
+        </div>
+        <div class="card">
+          <div class="icon icon-green">📊</div>
+          <h3>Trend &amp; Matchup History</h3>
+          <p>Free MLB Stats API data, cached in SQLite, powers season-over-season trend regression and last-N-meetings-vs-opponent breakdowns.</p>
+        </div>
+        <div class="card">
+          <div class="icon icon-violet">🤖</div>
+          <h3>Parlay Assistant</h3>
+          <p>An Anthropic Claude-powered chat tab builds parlays strictly from real data in the database — it's instructed to never invent odds, players, or lines.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="preview">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="label-mono tag">DASHBOARD PREVIEW</div>
+        <h2 class="section-title">Clean, dark, data-dense</h2>
+        <p class="section-desc">A React + Tailwind dashboard styled for long research sessions — illustrative sample data shown below.</p>
+      </div>
+      <div class="preview-shell">
+        <div class="preview-topbar">
+          <span class="preview-dot" style="background:#ff5f57"></span>
+          <span class="preview-dot" style="background:#febc2e"></span>
+          <span class="preview-dot" style="background:#28c840"></span>
+        </div>
+        <div class="preview-tabs">
+          <div class="ptab active">Best EV (232)</div>
+          <div class="ptab">Arbitrage</div>
+          <div class="ptab">Games (6)</div>
+          <div class="ptab">Player Props (429)</div>
+          <div class="ptab">Parlay Assistant</div>
+        </div>
+        <div class="preview-body">
+          <table class="mock">
+            <thead>
+              <tr>
+                <th>Matchup</th><th>Market</th><th>Selection</th><th>Book</th><th>Odds</th><th>Fair %</th><th>Source</th><th style="text-align:right">EV</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="white">TB Rays @ KC Royals</td><td>Stolen Bases</td><td class="white">Bobby Witt Jr. — Over 0.5</td><td><span class="pill">DraftKings</span></td><td class="white">+308</td><td>33.0%</td><td><span class="pill pill-violet">Model Proj</span></td><td style="text-align:right"><span class="green">+34.5%</span></td>
+              </tr>
+              <tr>
+                <td class="white">STL Cardinals @ ATL Braves</td><td>Moneyline</td><td class="white">Braves</td><td><span class="pill">FanDuel</span></td><td class="white">-112</td><td>54.2%</td><td><span class="pill pill-cyan">Consensus</span></td><td style="text-align:right"><span class="green">+2.8%</span></td>
+              </tr>
+              <tr>
+                <td class="white">LA Angels @ Seattle Mariners</td><td>Hits</td><td class="white">Josh Lowe — Over 0.5</td><td><span class="pill">DraftKings</span></td><td class="white">-109</td><td>52.7%</td><td><span class="pill pill-violet">Model Proj</span></td><td style="text-align:right"><span class="green">+27.9%</span></td>
+              </tr>
+              <tr>
+                <td class="white">Detroit Tigers @ Texas Rangers</td><td>Pitcher Strikeouts</td><td class="white">Framber Valdez — Under 5.5</td><td><span class="pill">FanDuel</span></td><td class="white">-146</td><td>63.8%</td><td><span class="pill pill-cyan">Consensus</span></td><td style="text-align:right"><span class="red">-1.2%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="label-mono tag">HOW IT WORKS</div>
+        <h2 class="section-title">A typed, modular Rust workspace</h2>
+        <p class="section-desc">Domain logic, persistence, external clients, and prediction models are split into focused crates — shared by both the CLI and the chat server.</p>
+      </div>
+
+      <div class="flow" style="margin-bottom:56px;">
+        <div class="flow-node"><div class="t">Odds API</div>FanDuel / DraftKings</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="t">mlb-cli</div>fetch · analyze · export</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="t">SQLite</div>snapshots + cache</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="t">mlb-ui</div>React dashboard</div>
+      </div>
+      <div class="flow" style="margin-top: -30px; margin-bottom: 56px;">
+        <div class="flow-node"><div class="t">MLB Stats API</div>season + game logs</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="t">mlb-predict</div>trend · projection</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="t">mlb-server</div>Claude parlay chat</div>
+      </div>
+
+      <div class="arch-grid">
+        <div class="crate-list">
+          <div class="crate"><span class="name">mlb-core</span><span class="desc">Domain models, EV/arbitrage analysis, repository traits</span></div>
+          <div class="crate"><span class="name">mlb-db</span><span class="desc">SQLite persistence for odds, bets, bankroll, player cache</span></div>
+          <div class="crate"><span class="name">mlb-odds-client</span><span class="desc">The Odds API HTTP client + rate limiting</span></div>
+          <div class="crate"><span class="name">mlb-stats-client</span><span class="desc">Free MLB Stats API client for historical stats</span></div>
+        </div>
+        <div class="crate-list">
+          <div class="crate"><span class="name">mlb-predict</span><span class="desc">Trend regression, matchup history, Poisson prop projections</span></div>
+          <div class="crate"><span class="name">mlb-llm</span><span class="desc">Anthropic Claude client for the parlay assistant</span></div>
+          <div class="crate"><span class="name">mlb-cli</span><span class="desc">CLI: fetch, analyze, export, bankroll, history</span></div>
+          <div class="crate"><span class="name">mlb-server</span><span class="desc">Axum HTTP API powering the chat tab</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="stack">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="label-mono tag">TECH STACK</div>
+        <h2 class="section-title">Built with</h2>
+      </div>
+      <div class="stack-badges" style="justify-content:center;">
+        <span class="badge">Rust</span>
+        <span class="badge">Tokio (async)</span>
+        <span class="badge">Axum</span>
+        <span class="badge">SQLx + SQLite</span>
+        <span class="badge">React 18</span>
+        <span class="badge">TypeScript</span>
+        <span class="badge">Vite</span>
+        <span class="badge">Tailwind CSS</span>
+        <span class="badge">The Odds API</span>
+        <span class="badge">MLB Stats API</span>
+        <span class="badge">Anthropic Claude</span>
+        <span class="badge">Poisson Regression</span>
+        <span class="badge">Pythagorean / Log5</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="cta-box">
+        <h2 class="section-title">Explore the code</h2>
+        <p>Full source, setup instructions, and CLI usage are in the repository README.</p>
+        <div class="hero-ctas" style="margin-bottom:0;">
+          <a class="btn btn-primary" href="https://github.com/CsageApplications/Rival-Sports-Analytics" target="_blank" rel="noopener">GitHub Repository →</a>
+          <a class="btn btn-ghost" href="https://github.com/CsageApplications/Rival-Sports-Analytics#readme" target="_blank" rel="noopener">Read the Docs</a>
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        ⚠️ Built for educational and analytical purposes. This project does not constitute financial or betting advice.
+        Odds, expected value, and model projections are statistical estimates and do not guarantee outcomes. Please gamble responsibly.
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <span>Rival Sports Analytics · Rust + React · Odds via The Odds API · FanDuel &amp; DraftKings only</span>
+      <span>© 2026</span>
+    </div>
+  </footer>
+</body>
+</html>
