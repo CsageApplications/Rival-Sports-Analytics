@@ -155,4 +155,13 @@ CREATE TABLE IF NOT EXISTS player_stats_cache (
 );
 
 CREATE INDEX IF NOT EXISTS idx_player_stats_name ON player_stats_cache(player_name);
+
+-- Team standings cache (MLB Stats API), one row per season snapshot
+-- (win/loss record + runs scored/allowed per team, used by the game
+-- win-probability projection model).
+CREATE TABLE IF NOT EXISTS standings_cache (
+    season INTEGER PRIMARY KEY,
+    payload JSON NOT NULL,
+    fetched_at TEXT NOT NULL
+);
 "#;
