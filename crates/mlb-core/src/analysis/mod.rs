@@ -4,8 +4,10 @@ mod expected_value;
 mod kelly;
 mod arbitrage;
 mod best_ev;
+mod plausibility;
 
 pub use expected_value::*;
 pub use kelly::*;
 pub use arbitrage::*;
 pub use best_ev::*;
+pub use plausibility::*;
