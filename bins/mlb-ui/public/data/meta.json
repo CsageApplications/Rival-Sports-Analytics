@@ -1,8 +1,9 @@
 {
-  "exported_at": "2026-07-02 02:09 UTC",
-  "total_games": 14,
+  "exported_at": "2026-07-02 19:36 UTC",
+  "total_games": 6,
   "arb_count": 0,
-  "best_ev_count": 0,
-  "prop_count": 370,
+  "best_ev_count": 232,
+  "prop_count": 429,
+  "prediction_count": 6,
   "requests_remaining": null
 }

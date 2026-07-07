@@ -100,6 +100,19 @@ pub fn parse_innings_pitched(raw: &str) -> Option<f64> {
     Some(outs as f64 / 3.0)
 }
 
+/// A team's current season win/loss record and run differential, used as
+/// input to the Pythagorean win-expectation projection in `mlb-predict`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamStanding {
+    pub team_id: i64,
+    pub team_name: String,
+    pub wins: i32,
+    pub losses: i32,
+    pub win_pct: f64,
+    pub runs_scored: Option<i32>,
+    pub runs_allowed: Option<i32>,
+}
+
 // ── Raw API response shapes (deserialize-only) ──────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -180,4 +193,28 @@ pub(crate) struct RawStat {
     pub ops: Option<String>,
     #[serde(rename = "stolenBases")]
     pub stolen_bases: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct StandingsResponse {
+    pub records: Option<Vec<RawStandingsRecord>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct RawStandingsRecord {
+    #[serde(rename = "teamRecords")]
+    pub team_records: Option<Vec<RawTeamRecord>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct RawTeamRecord {
+    pub team: Option<RawTeamRef>,
+    pub wins: Option<i32>,
+    pub losses: Option<i32>,
+    #[serde(rename = "winningPercentage")]
+    pub winning_percentage: Option<String>,
+    #[serde(rename = "runsScored")]
+    pub runs_scored: Option<i32>,
+    #[serde(rename = "runsAllowed")]
+    pub runs_allowed: Option<i32>,
 }

@@ -37,12 +37,20 @@ mod matchup;
 mod report;
 pub mod stats;
 mod trend;
+mod game_model;
+mod standings;
+mod summary;
+mod projection;
 
 pub use error::PredictError;
 pub use matchup::last_n_meetings;
 pub use report::{fetch_and_cache_report, get_cached_report, get_or_fetch_report, PlayerReport, CACHE_TTL_HOURS};
 pub use trend::{linear_regression_trend, SeasonPoint, TrendDirection, TrendResult};
+pub use game_model::{compute_game_edge, log5, project_game, pythagorean_win_pct, GameEdge, GameProjection, HOME_FIELD_ADVANTAGE, PYTHAGOREAN_EXPONENT};
+pub use standings::{fetch_and_cache_standings, find_standing_by_team_name, get_cached_standings, get_or_fetch_standings, STANDINGS_CACHE_TTL_HOURS};
+pub use summary::{build_history_summary, rate_extractor_for_market, stat_group_for_market, MeetingSummary, PlayerHistorySummary, TrendSummary};
+pub use projection::{build_prop_projection, is_high_divergence, model_edge, model_ev_pct, project_prop, project_recent_average, PropProjection, HIGH_DIVERGENCE_EDGE_THRESHOLD, HIGH_DIVERGENCE_EV_THRESHOLD, MIN_GAMES_FOR_PROJECTION, RECENT_GAMES_WINDOW};
 
 // Re-exported for convenience so downstream crates usually only need to
 // depend on `mlb-predict` + `mlb-stats-client` directly for types.
-pub use mlb_stats_client::StatGroup;
+pub use mlb_stats_client::{StatGroup, TeamStanding};

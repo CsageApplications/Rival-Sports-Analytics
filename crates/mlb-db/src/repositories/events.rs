@@ -82,7 +82,7 @@ async fn get_upcoming_events_impl(db: &Database) -> Result<Vec<Event>, DbError> 
         r#"
         SELECT id, sport_key, sport_title, commence_time, home_team, away_team
         FROM events
-        WHERE commence_time > datetime('now')
+        WHERE datetime(commence_time) > datetime('now')
         ORDER BY commence_time ASC
         "#,
     )

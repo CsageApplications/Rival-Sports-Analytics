@@ -167,6 +167,49 @@ impl StatsApiClient {
         Ok(all)
     }
 
+    /// Current-season win/loss records and run differentials for every
+    /// MLB team, via the standings endpoint. Used as input to the
+    /// Pythagorean win-expectation game projection in `mlb-predict`.
+    #[instrument(skip(self))]
+    pub async fn get_standings(&self, season: i32) -> Result<Vec<TeamStanding>, StatsApiError> {
+        let url = format!("{}/standings", BASE_URL);
+        let season_str = season.to_string();
+        let resp: StandingsResponse = self
+            .get(
+                &url,
+                &[("leagueId", "103,104"), ("season", &season_str), ("standingsTypes", "regularSeason")],
+            )
+            .await?;
+
+        let mut standings = Vec::new();
+        for record in resp.records.unwrap_or_default() {
+            for tr in record.team_records.unwrap_or_default() {
+                let Some(team) = tr.team else { continue };
+                let Some(name) = team.name else { continue };
+                let wins = tr.wins.unwrap_or(0);
+                let losses = tr.losses.unwrap_or(0);
+                let win_pct = tr
+                    .winning_percentage
+                    .as_deref()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or_else(|| {
+                        let total = (wins + losses).max(1) as f64;
+                        wins as f64 / total
+                    });
+                standings.push(TeamStanding {
+                    team_id: team.id,
+                    team_name: name,
+                    wins,
+                    losses,
+                    win_pct,
+                    runs_scored: tr.runs_scored,
+                    runs_allowed: tr.runs_allowed,
+                });
+            }
+        }
+        Ok(standings)
+    }
+
     async fn get<T: serde::de::DeserializeOwned>(&self, url: &str, params: &[(&str, &str)]) -> Result<T, StatsApiError> {
         debug!(url, "Making MLB Stats API request");
         let response = self.http.get(url).query(params).send().await?;

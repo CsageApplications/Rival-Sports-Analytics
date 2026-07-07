@@ -17,4 +17,4 @@ mod types;
 pub use client::StatsApiClient;
 pub use error::StatsApiError;
 pub use teams::{find_team_id_by_name, team_name_by_id, TeamInfo, MLB_TEAMS};
-pub use types::{parse_innings_pitched, GameLogEntry, PlayerSearchResult, SeasonStatLine, StatGroup};
+pub use types::{parse_innings_pitched, GameLogEntry, PlayerSearchResult, SeasonStatLine, StatGroup, TeamStanding};

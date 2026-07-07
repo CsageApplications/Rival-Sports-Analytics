@@ -21,7 +21,7 @@ A command-line tool for MLB sports betting analysis, built in Rust. Integrates w
 ### Build from source
 
 ```bash
-git clone https://github.com/yourusername/Rust-MLB-Sports-Betting.git
+git clone https://github.com/CsageApplications/Rust-MLB-Sports-Betting.git
 cd Rust-MLB-Sports-Betting
 cargo build --release
 ```
