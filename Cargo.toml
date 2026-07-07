@@ -16,7 +16,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT"
-repository = "https://github.com/yourusername/Rust-MLB-Sports-Betting"
+repository = "https://github.com/CsageApplications/Rust-MLB-Sports-Betting"
 
 [workspace.dependencies]
 # Async runtime
