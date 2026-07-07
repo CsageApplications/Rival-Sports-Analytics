@@ -9,6 +9,8 @@ use mlb_core::analysis::{calculate_ev, calculate_no_vig_probability, calculate_v
 use mlb_core::models::MarketType;
 use mlb_core::repository::{EventRepository, OddsRepository};
 use mlb_db::Database;
+use mlb_predict::{compute_game_edge, find_standing_by_team_name, get_or_fetch_standings};
+use mlb_stats_client::StatsApiClient;
 use crate::config::Config;
 
 #[derive(Subcommand)]
@@ -51,6 +53,14 @@ pub enum AnalyzeCommands {
         /// Event ID
         event_id: String,
     },
+    /// Project pre-game win probabilities from team standings
+    /// (Pythagorean win expectation + Log5), compared against the
+    /// market's de-vigged moneyline probability.
+    Predict {
+        /// Event ID (or "all" for all upcoming events)
+        #[arg(default_value = "all")]
+        event_id: String,
+    },
 }
 
 impl AnalyzeCommands {
@@ -65,6 +75,7 @@ impl AnalyzeCommands {
             AnalyzeCommands::BestEv { event_id, limit, positive_only } => best_ev(&db, &event_id, limit, positive_only).await,
             AnalyzeCommands::Best { event_id } => show_best_odds(&db, &event_id).await,
             AnalyzeCommands::Vig { event_id } => show_vig(&db, &event_id).await,
+            AnalyzeCommands::Predict { event_id } => predict_games(&db, &event_id).await,
         }
     }
 }
@@ -307,6 +318,96 @@ async fn show_vig(db: &Database, event_id: &str) -> Result<()> {
     }
 
     println!("\n  Lower vig = better value for bettors");
+
+    Ok(())
+}
+
+/// Current MLB season year. Standings for the in-progress season are
+/// what we want year-round (there's no "next season" data until pitchers
+/// and catchers report), so this is just the current calendar year.
+fn current_season() -> i32 {
+    use chrono::Datelike;
+    chrono::Utc::now().year()
+}
+
+async fn predict_games(db: &Database, event_id: &str) -> Result<()> {
+    let events = if event_id == "all" {
+        db.get_upcoming_events().await?
+    } else {
+        vec![db.get_event(event_id).await?]
+    };
+
+    if events.is_empty() {
+        println!("No events found. Run `mlb fetch odds` first.");
+        return Ok(());
+    }
+
+    println!("Pre-Game Win Probability Model");
+    println!("(Pythagorean win expectation + Log5, vs. market de-vigged odds)\n");
+    println!("{:=<80}", "");
+
+    let stats_client = StatsApiClient::new();
+    let season = current_season();
+    let standings = get_or_fetch_standings(db, &stats_client, season).await?;
+
+    if standings.is_empty() {
+        println!("No standings data available for season {}.", season);
+        return Ok(());
+    }
+
+    let mut shown = 0;
+    for event in &events {
+        let odds = match db.get_latest_odds(&event.id).await {
+            Ok(o) => o,
+            Err(_) => continue,
+        };
+
+        let Some(home) = find_standing_by_team_name(&standings, &event.home_team) else {
+            println!("\n{} — no standings match for '{}', skipping.", event.matchup(), event.home_team);
+            continue;
+        };
+        let Some(away) = find_standing_by_team_name(&standings, &event.away_team) else {
+            println!("\n{} — no standings match for '{}', skipping.", event.matchup(), event.away_team);
+            continue;
+        };
+
+        let Some(edge) = compute_game_edge(&event.home_team, &event.away_team, home, away, &odds) else {
+            println!("\n{} — no moneyline odds posted yet, skipping.", event.matchup());
+            continue;
+        };
+
+        shown += 1;
+        println!("\n{}", event.matchup());
+        println!("  {}\n", event.commence_time.format("%a %b %d %I:%M %p"));
+        println!(
+            "  {} ({}-{}, {:.0} RS/{:.0} RA): model {:.1}% | market fair {:.1}% | edge {:+.1}pp",
+            event.home_team,
+            home.wins,
+            home.losses,
+            home.runs_scored.unwrap_or(0) as f64,
+            home.runs_allowed.unwrap_or(0) as f64,
+            edge.model_home_win_pct * 100.0,
+            edge.market_home_fair_pct * 100.0,
+            edge.home_edge_pct,
+        );
+        println!(
+            "  {} ({}-{}, {:.0} RS/{:.0} RA): model {:.1}% | market fair {:.1}% | edge {:+.1}pp",
+            event.away_team,
+            away.wins,
+            away.losses,
+            away.runs_scored.unwrap_or(0) as f64,
+            away.runs_allowed.unwrap_or(0) as f64,
+            edge.model_away_win_pct * 100.0,
+            edge.market_away_fair_pct * 100.0,
+            edge.away_edge_pct,
+        );
+    }
+
+    if shown == 0 {
+        println!("\nNo games could be projected (missing standings match or odds).");
+    }
+
+    println!("\nNote: this is a sabermetric estimate (Pythagorean win expectation + Log5), not a guarantee.");
 
     Ok(())
 }
